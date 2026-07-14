@@ -1,6 +1,8 @@
+import Image from "next/image";
 import Nav from "@/components/Nav";
 import Reveal from "@/components/Reveal";
 import Parallax from "@/components/Parallax";
+import portrait from "@/public/jourdan-marc.jpg";
 
 const CONTACT_EMAIL = "jourdanmarc@aol.com";
 
@@ -221,8 +223,27 @@ export default function Home() {
         {/* À propos */}
         <section id="a-propos" className="mx-auto max-w-6xl px-6 py-24 scroll-mt-20">
           <div className="glass overflow-hidden rounded-[2rem] p-8 sm:p-12 lg:p-16">
-            <div className="grid items-center gap-10 lg:grid-cols-[1.4fr_1fr]">
-              <Reveal>
+            <div className="grid items-center gap-10 lg:grid-cols-[0.85fr_1.15fr]">
+              <Reveal className="order-1 lg:order-none">
+                <div className="group relative mx-auto max-w-sm">
+                  <div
+                    className="absolute -inset-3 -z-10 rounded-[2rem] bg-gradient-to-tr from-accent-1/30 via-accent-2/20 to-accent-3/30 opacity-70 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
+                    aria-hidden
+                  />
+                  <div className="overflow-hidden rounded-[1.75rem] border border-white/10 shadow-2xl shadow-black/40">
+                    <Image
+                      src={portrait}
+                      alt="Portrait de Jourdan Marc, consultant IA pour PME"
+                      placeholder="blur"
+                      priority={false}
+                      sizes="(max-width: 1024px) 24rem, 24rem"
+                      className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                    />
+                  </div>
+                </div>
+              </Reveal>
+
+              <Reveal delay={120} className="order-2 lg:order-none">
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent-2">
                   À propos
                 </p>
@@ -244,10 +265,8 @@ export default function Home() {
                     s&apos;approprient.
                   </p>
                 </div>
-              </Reveal>
 
-              <Reveal delay={120}>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
                   {[
                     { k: "100%", v: "Sur mesure" },
                     { k: "PME", v: "Ma spécialité" },
@@ -256,12 +275,12 @@ export default function Home() {
                   ].map((stat) => (
                     <div
                       key={stat.v}
-                      className="rounded-2xl border border-white/10 bg-white/[0.02] p-5"
+                      className="rounded-2xl border border-white/10 bg-white/[0.02] p-4"
                     >
-                      <div className="text-gradient font-[family-name:var(--font-display)] text-2xl font-bold">
+                      <div className="text-gradient font-[family-name:var(--font-display)] text-xl font-bold">
                         {stat.k}
                       </div>
-                      <div className="mt-1 text-sm text-muted">{stat.v}</div>
+                      <div className="mt-1 text-xs text-muted">{stat.v}</div>
                     </div>
                   ))}
                 </div>
