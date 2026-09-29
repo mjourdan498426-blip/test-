@@ -14,7 +14,7 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
 });
 
-const siteUrl = "https://jourdanmarc.vercel.app";
+const siteUrl = "https://barbaracare.fr";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
