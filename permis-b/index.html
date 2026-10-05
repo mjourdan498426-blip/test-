@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Révision permis B · Vérifications</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Révision permis B</h1>
+    <p class="sub">Les 100 fiches officielles : vérification, sécurité routière, premiers secours.</p>
+  </header>
+
+  <main>
+    <section class="controls" aria-label="Choix de la fiche">
+      <button id="btn-random" class="primary">Tirer une fiche au hasard</button>
+      <div class="row">
+        <label>Type
+          <select id="filter-type">
+            <option value="all">Intérieure et extérieure</option>
+            <option value="VI">Intérieure (VI)</option>
+            <option value="VE">Extérieure (VE)</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="filter-unknown"> Seulement les fiches pas encore sues</label>
+      </div>
+      <div class="row">
+        <label>Aller à la fiche n°
+          <input type="number" id="goto" min="1" max="100" inputmode="numeric" placeholder="1 à 100">
+        </label>
+        <button id="btn-goto">Afficher</button>
+        <button id="btn-prev" aria-label="Fiche précédente">◀</button>
+        <button id="btn-next" aria-label="Fiche suivante">▶</button>
+      </div>
+      <p class="progress" id="progress"></p>
+    </section>
+
+    <article id="fiche" class="fiche" hidden>
+      <div class="fiche-head">
+        <h2 id="fiche-titre"></h2>
+        <span id="fiche-type" class="badge"></span>
+      </div>
+
+      <section class="bloc">
+        <h3 id="verif-titre">Vérification</h3>
+        <p id="verif-q" class="question"></p>
+        <div class="reponse" hidden><p id="verif-r"></p></div>
+      </section>
+
+      <section class="bloc">
+        <h3>Question de sécurité routière</h3>
+        <p id="qser-q" class="question"></p>
+        <div class="reponse" hidden><p id="qser-r"></p></div>
+      </section>
+
+      <section class="bloc">
+        <h3>Question premiers secours</h3>
+        <p id="ps-q" class="question"></p>
+        <div class="reponse" hidden><p id="ps-r"></p></div>
+      </section>
+
+      <div class="actions">
+        <button id="btn-reveal" class="primary">Afficher les réponses</button>
+        <button id="btn-known">Je la connais</button>
+      </div>
+    </article>
+
+    <details class="liste">
+      <summary>Voir la liste des 100 fiches</summary>
+      <ol id="liste"></ol>
+    </details>
+  </main>
+
+  <footer>
+    <p>Source : banque officielle des vérifications DSR/BRPCE, 1er janvier 2018.
+      Quand le document officiel ne donne pas de réponse à la vérification, c'est indiqué sur la fiche.</p>
+    <p>Raccourcis : <kbd>Espace</kbd> tirer une fiche, <kbd>R</kbd> réponses, <kbd>←</kbd> <kbd>→</kbd> précédente / suivante.</p>
+  </footer>
+
+  <script src="fiches.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
