@@ -2,176 +2,633 @@
   "use strict";
 
   var FICHES = window.FICHES || [];
-  var STORAGE_KEY = "permisb-fiches-sues";
-  var TYPE_LABEL = { VI: "Vérification intérieure", VE: "Vérification extérieure" };
-  var MISSING = "Le document officiel ne donne pas de réponse pour cette vérification : la manipulation ou la réponse attendue se déduit de la question.";
+  var KEY_KNOWN = "permisb-fiches-sues";
+  var KEY_BEST = "permisb-meilleur-defi";
+  var MISSING = "Le document officiel ne donne pas de réponse écrite : fais la manipulation ou montre l'élément demandé.";
+  var TYPE_LABEL = { VI: "Intérieur", VE: "Extérieur" };
+  var reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   var $ = function (id) { return document.getElementById(id); };
-  var current = null;
-  var known = loadKnown();
+  var byNum = {};
+  FICHES.forEach(function (f) { byNum[f.numero] = f; });
 
-  function loadKnown() {
+  var state = {
+    filter: "all",
+    onlyTodo: false,
+    current: null,
+    history: [],
+    known: load(KEY_KNOWN, {}),
+    best: load(KEY_BEST, null),
+    size: 10,
+    ch: null
+  };
+
+  // ---------- Utilitaires ----------
+  function load(key, fallback) {
     try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : {};
-    } catch (e) {
-      return {};
-    }
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) { return fallback; }
   }
-
-  function saveKnown() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(known)); } catch (e) { /* stockage indisponible */ }
+  function save(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* stockage indisponible */ }
   }
-
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
   // Le PDF officiel numérote la 100e fiche « 00 ».
-  function label(n) {
-    return n === 100 ? "00 (100)" : String(n).padStart(2, "0");
+  function label(n) { return n === 100 ? "00" : String(n).padStart(2, "0"); }
+  function buzz(ms) { if (navigator.vibrate && !reduceMotion) navigator.vibrate(ms || 8); }
+  function shuffle(a) {
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
   }
+  function nextFrame(fn) { requestAnimationFrame(function () { requestAnimationFrame(fn); }); }
+
+  // ---------- Contrôles segmentés (pastille qui glisse) ----------
+  function segmented(el, onChange) {
+    var pill = el.querySelector(".seg-pill");
+    var buttons = Array.prototype.slice.call(el.querySelectorAll("button"));
+    var attr = buttons[0].getAttribute("role") === "tab" ? "aria-selected" : "aria-checked";
+    function place() {
+      var active = buttons.filter(function (b) { return b.getAttribute(attr) === "true"; })[0] || buttons[0];
+      pill.style.width = active.offsetWidth + "px";
+      pill.style.transform = "translateX(" + (active.offsetLeft - 3) + "px)";
+    }
+    function select(value, silent) {
+      buttons.forEach(function (b) { b.setAttribute(attr, String(b.dataset.value === value)); });
+      place();
+      if (!silent) onChange(value);
+    }
+    buttons.forEach(function (b) {
+      b.addEventListener("click", function () {
+        if (b.getAttribute(attr) === "true") return;
+        buzz(5);
+        select(b.dataset.value);
+      });
+    });
+    window.addEventListener("resize", place);
+    place();
+    return { select: select, place: place };
+  }
+
+  // ---------- Carte d'une fiche ----------
+  function qaBlock(kind, icon, title, q, a, judge) {
+    return '<section class="qa" data-kind="' + kind + '">' +
+      '<p class="qa-label"><span aria-hidden="true">' + icon + "</span>" + title + "</p>" +
+      '<p class="qa-q">' + esc(q) + "</p>" +
+      '<button type="button" class="reveal-btn">Voir la réponse</button>' +
+      '<div class="answer"><div><div class="answer-inner' + (a ? "" : " missing") + '">' + esc(a || MISSING) + "</div></div></div>" +
+      (judge ? '<div class="judge"><button type="button" class="no">✗ À revoir</button><button type="button" class="yes">✓ Je savais</button></div>' : "") +
+      "</section>";
+  }
+
+  function buildCard(f, judge) {
+    var el = document.createElement("article");
+    el.className = "card fiche enter";
+    el.dataset.num = f.numero;
+    var t = f.verification.type;
+    el.innerHTML =
+      '<span class="swipe-hint prev">← Précédente</span><span class="swipe-hint next">Suivante →</span>' +
+      '<div class="fiche-head"><span class="fiche-num">Fiche<b>' + label(f.numero) + "</b></span>" +
+      '<span class="chips">' + (state.known[f.numero] && !judge ? '<span class="chip ok">✓ Sue</span>' : "") +
+      '<span class="chip ' + t + '">' + (t === "VI" ? "🚗 " : "🔧 ") + TYPE_LABEL[t] + "</span></span></div>" +
+      qaBlock("verif", t === "VI" ? "🚗" : "🔧", "Vérification " + TYPE_LABEL[t].toLowerCase(), f.verification.question, f.verification.reponse, judge) +
+      qaBlock("qser", "🛣️", "Sécurité routière", f.qser.question, f.qser.reponse, judge) +
+      qaBlock("ps", "⛑️", "Premiers secours", f.premiers_secours.question, f.premiers_secours.reponse, judge);
+
+    el.querySelectorAll(".reveal-btn").forEach(function (b) {
+      b.addEventListener("click", function () {
+        b.closest(".qa").classList.add("open");
+        buzz(6);
+      });
+    });
+    return el;
+  }
+
+  function swapCard(container, card, direction) {
+    var old = container.querySelector(".card.fiche:not(.leave)");
+    if (old) {
+      old.classList.add("leave");
+      var dx = direction === "prev" ? 1 : -1;
+      old.style.transform = "translateX(" + (dx * 115) + "%) rotate(" + (dx * 8) + "deg)";
+      old.style.opacity = "0";
+      setTimeout(function () { old.remove(); }, reduceMotion ? 0 : 450);
+    }
+    container.appendChild(card);
+    nextFrame(function () { card.classList.remove("enter"); });
+  }
+
+  // ---------- Mode révision ----------
+  var stack = $("stack");
 
   function pool() {
-    var type = $("filter-type").value;
-    var onlyUnknown = $("filter-unknown").checked;
     return FICHES.filter(function (f) {
-      if (type !== "all" && f.verification.type !== type) return false;
-      if (onlyUnknown && known[f.numero]) return false;
+      if (state.filter !== "all" && f.verification.type !== state.filter) return false;
+      if (state.onlyTodo && state.known[f.numero]) return false;
       return true;
     });
   }
 
-  function setAnswer(id, text) {
-    var p = $(id);
-    var box = p.parentNode;
-    p.textContent = text || MISSING;
-    box.classList.toggle("missing", !text);
+  function show(f, direction) {
+    if (state.current && direction !== "prev") state.history.push(state.current.numero);
+    if (state.history.length > 200) state.history.shift();
+    state.current = f;
+    var card = buildCard(f, false);
+    attachSwipe(card);
+    swapCard(stack, card, direction);
+    stack.classList.remove("is-empty");
+    updateKnownButton();
+    markCurrentTile();
+    try { history.replaceState(null, "", "#" + f.numero); } catch (e) { /* file:// */ }
   }
 
-  function show(fiche) {
-    current = fiche;
-    $("fiche").hidden = false;
-    $("fiche-titre").textContent = "Fiche n° " + label(fiche.numero);
-    var badge = $("fiche-type");
-    badge.textContent = fiche.verification.type;
-    badge.className = "badge " + fiche.verification.type + (known[fiche.numero] ? " known" : "");
-    $("verif-titre").textContent = TYPE_LABEL[fiche.verification.type] || "Vérification";
-
-    $("verif-q").textContent = fiche.verification.question;
-    $("qser-q").textContent = fiche.qser.question;
-    $("ps-q").textContent = fiche.premiers_secours.question;
-    setAnswer("verif-r", fiche.verification.reponse);
-    setAnswer("qser-r", fiche.qser.reponse);
-    setAnswer("ps-r", fiche.premiers_secours.reponse);
-
-    setRevealed(false);
-    $("btn-known").textContent = known[fiche.numero] ? "Remettre à réviser" : "Je la connais";
-    $("goto").value = fiche.numero;
-    try { history.replaceState(null, "", "#" + fiche.numero); } catch (e) { /* file:// sur certains navigateurs */ }
-    $("fiche").scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  function setRevealed(on) {
-    document.querySelectorAll("#fiche .reponse").forEach(function (el) { el.hidden = !on; });
-    $("btn-reveal").textContent = on ? "Masquer les réponses" : "Afficher les réponses";
-  }
-
-  function toggleReveal() {
-    if (!current) return;
-    setRevealed($("verif-r").parentNode.hidden);
-  }
-
-  function random() {
+  function next() {
     var list = pool();
     if (!list.length) {
-      $("progress").textContent = "Aucune fiche ne correspond aux filtres : toutes celles-ci sont marquées comme sues.";
+      toast(state.onlyTodo ? "Bravo, tu connais toutes ces fiches ! 🎉" : "Aucune fiche pour ce filtre.");
+      if (state.onlyTodo) confetti();
       return;
     }
-    // Évite de retomber sur la même fiche deux fois de suite.
-    if (list.length > 1 && current) {
-      list = list.filter(function (f) { return f.numero !== current.numero; });
+    if (list.length > 1 && state.current) {
+      list = list.filter(function (f) { return f.numero !== state.current.numero; });
     }
-    show(list[Math.floor(Math.random() * list.length)]);
+    buzz(6);
+    show(list[Math.floor(Math.random() * list.length)], "next");
   }
 
-  function byNumber(n) {
-    var f = FICHES.find(function (x) { return x.numero === n; });
-    if (f) show(f);
-  }
-
-  function step(delta) {
-    var n = current ? current.numero + delta : 1;
-    if (n < 1) n = 100;
-    if (n > 100) n = 1;
-    byNumber(n);
+  function prev() {
+    var n = state.history.pop();
+    if (n) show(byNum[n], "prev");
+    else toast("Pas de fiche précédente.");
   }
 
   function toggleKnown() {
-    if (!current) return;
-    if (known[current.numero]) delete known[current.numero];
-    else known[current.numero] = true;
-    saveKnown();
-    renderProgress();
-    renderList();
-    $("btn-known").textContent = known[current.numero] ? "Remettre à réviser" : "Je la connais";
-    $("fiche-type").classList.toggle("known", !!known[current.numero]);
+    var f = state.current;
+    if (!f) { next(); return; }
+    var n = f.numero;
+    if (state.known[n]) {
+      delete state.known[n];
+      toast("Fiche " + label(n) + " remise à revoir.");
+    } else {
+      state.known[n] = true;
+      buzz([10, 40, 10]);
+      toast("Fiche " + label(n) + " marquée comme sue.", "Annuler", function () {
+        delete state.known[n];
+        save(KEY_KNOWN, state.known);
+        refreshKnown();
+      });
+      var count = Object.keys(state.known).length;
+      if (count % 10 === 0) { confetti(); toast(count + " fiches sues, continue comme ça ! 🚀"); }
+    }
+    save(KEY_KNOWN, state.known);
+    refreshKnown();
   }
 
-  function renderProgress() {
-    var n = Object.keys(known).length;
-    $("progress").innerHTML = n + " fiche" + (n > 1 ? "s" : "") + " sur 100 marquée" + (n > 1 ? "s" : "") +
-      " comme sue" + (n > 1 ? "s" : "") + (n ? ' · <button type="button" id="btn-reset">Tout remettre à zéro</button>' : "");
-    var reset = $("btn-reset");
-    if (reset) reset.addEventListener("click", function () {
-      if (!confirm("Remettre toutes les fiches à réviser ?")) return;
-      known = {};
-      saveKnown();
-      renderProgress();
-      renderList();
-      if (current) show(current);
+  function refreshKnown() {
+    updateRing();
+    updateKnownButton();
+    renderGrid();
+    var card = stack.querySelector(".card.fiche:not(.leave)");
+    if (card && state.current) {
+      var chips = card.querySelector(".chips");
+      var ok = chips.querySelector(".chip.ok");
+      if (state.known[state.current.numero] && !ok) chips.insertAdjacentHTML("afterbegin", '<span class="chip ok">✓ Sue</span>');
+      if (!state.known[state.current.numero] && ok) ok.remove();
+    }
+  }
+
+  function updateKnownButton() {
+    var on = !!(state.current && state.known[state.current.numero]);
+    $("btn-known").classList.toggle("on", on);
+    $("known-label").textContent = on ? "Sue" : "Je sais";
+  }
+
+  function updateRing() {
+    var n = Object.keys(state.known).length;
+    $("ring-num").textContent = n;
+    $("ring-fg").style.strokeDashoffset = String(97.4 * (1 - n / 100));
+    $("ring").setAttribute("aria-label", n + " fiches sues sur 100. Voir toutes les fiches");
+  }
+
+  // ---------- Glisser la carte ----------
+  function attachSwipe(card) {
+    var startX = 0, startY = 0, dx = 0, active = false, locked = false, id = null;
+    var hintNext = card.querySelector(".swipe-hint.next");
+    var hintPrev = card.querySelector(".swipe-hint.prev");
+
+    card.addEventListener("pointerdown", function (e) {
+      if (e.target.closest("button") || e.button > 0) return;
+      active = true; locked = false; dx = 0; id = e.pointerId;
+      startX = e.clientX; startY = e.clientY;
     });
+    card.addEventListener("pointermove", function (e) {
+      if (!active || e.pointerId !== id) return;
+      var mx = e.clientX - startX, my = e.clientY - startY;
+      if (!locked) {
+        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+        if (Math.abs(my) > Math.abs(mx)) { active = false; return; }
+        locked = true;
+        card.classList.add("dragging");
+        try { card.setPointerCapture(id); } catch (err) { /* ignore */ }
+      }
+      dx = mx;
+      // Résistance au-delà de 140 px, comme un élastique.
+      var shown = Math.abs(dx) > 140 ? Math.sign(dx) * (140 + (Math.abs(dx) - 140) * 0.4) : dx;
+      card.style.transform = "translateX(" + shown + "px) rotate(" + (shown / 22) + "deg)";
+      hintNext.style.opacity = String(Math.min(1, Math.max(0, -dx / 90)));
+      hintPrev.style.opacity = String(Math.min(1, Math.max(0, dx / 90)));
+    });
+    function end() {
+      if (!active) return;
+      active = false;
+      card.classList.remove("dragging");
+      hintNext.style.opacity = hintPrev.style.opacity = "0";
+      if (!locked) return;
+      if (dx < -90) next();
+      else if (dx > 90 && state.history.length) prev();
+      else card.style.transform = "";
+    }
+    card.addEventListener("pointerup", end);
+    card.addEventListener("pointercancel", end);
   }
 
-  function renderList() {
-    var ol = $("liste");
-    ol.innerHTML = "";
+  // ---------- Tiroir : toutes les fiches ----------
+  var sheet = $("sheet"), backdrop = $("sheet-backdrop");
+
+  function renderGrid() {
+    var q = $("search").value.trim().toLowerCase();
+    var grid = $("grid");
+    grid.innerHTML = "";
+    var shown = 0;
     FICHES.forEach(function (f) {
-      var li = document.createElement("li");
+      if (q) {
+        var text = (f.verification.question + " " + f.qser.question + " " + f.premiers_secours.question + " " + label(f.numero) + " " + f.numero).toLowerCase();
+        if (text.indexOf(q) === -1) return;
+      }
+      shown++;
       var b = document.createElement("button");
       b.type = "button";
-      b.innerHTML = '<span class="num"></span><span class="t ' + f.verification.type + '">' +
-        f.verification.type + '</span><span class="q"></span>' + (known[f.numero] ? '<span class="ok">✓</span>' : "");
-      b.querySelector(".num").textContent = label(f.numero);
-      b.querySelector(".q").textContent = f.verification.question;
-      b.addEventListener("click", function () { show(f); });
+      b.className = "tile " + f.verification.type + (state.known[f.numero] ? " ok" : "") +
+        (state.current && state.current.numero === f.numero ? " current" : "");
+      b.textContent = label(f.numero);
+      b.title = f.verification.question;
+      b.setAttribute("aria-label", "Fiche " + label(f.numero) + " : " + f.verification.question);
+      b.addEventListener("click", function () {
+        closeSheet();
+        setTab("revise");
+        show(f, "next");
+      });
+      grid.appendChild(b);
+    });
+    $("no-result").hidden = shown > 0;
+  }
+
+  function markCurrentTile() {
+    document.querySelectorAll(".tile.current").forEach(function (t) { t.classList.remove("current"); });
+  }
+
+  function openSheet() {
+    renderGrid();
+    backdrop.hidden = false;
+    sheet.setAttribute("aria-hidden", "false");
+    nextFrame(function () {
+      backdrop.classList.add("show");
+      sheet.classList.add("open");
+    });
+    buzz(5);
+  }
+  function closeSheet() {
+    sheet.style.transform = "";
+    backdrop.classList.remove("show");
+    sheet.classList.remove("open");
+    sheet.setAttribute("aria-hidden", "true");
+    setTimeout(function () { if (!sheet.classList.contains("open")) backdrop.hidden = true; }, 450);
+  }
+
+  (function sheetDrag() {
+    var handle = $("sheet-handle"), startY = 0, dy = 0, dragging = false;
+    handle.addEventListener("pointerdown", function (e) {
+      dragging = true; startY = e.clientY; dy = 0;
+      sheet.classList.add("dragging");
+      handle.setPointerCapture(e.pointerId);
+    });
+    handle.addEventListener("pointermove", function (e) {
+      if (!dragging) return;
+      dy = Math.max(0, e.clientY - startY);
+      sheet.style.transform = "translateY(" + dy + "px)";
+    });
+    function end() {
+      if (!dragging) return;
+      dragging = false;
+      sheet.classList.remove("dragging");
+      if (dy > 100) closeSheet(); else sheet.style.transform = "";
+    }
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
+    backdrop.addEventListener("click", closeSheet);
+  })();
+
+  // ---------- Toasts ----------
+  function toast(msg, actionLabel, action) {
+    var list = $("toasts");
+    var li = document.createElement("li");
+    li.className = "toast in";
+    li.innerHTML = '<span class="t-msg"></span>';
+    li.querySelector(".t-msg").textContent = msg;
+    if (actionLabel) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = actionLabel;
+      b.addEventListener("click", function () { action(); dismiss(); });
       li.appendChild(b);
-      ol.appendChild(li);
+    }
+    list.appendChild(li);
+    layoutToasts();
+    nextFrame(function () { li.classList.remove("in"); layoutToasts(); });
+    var timer = setTimeout(dismiss, 3200);
+    function dismiss() {
+      clearTimeout(timer);
+      if (li.classList.contains("out")) return;
+      li.classList.add("out");
+      setTimeout(function () { li.remove(); layoutToasts(); }, 400);
+    }
+  }
+  function layoutToasts() {
+    // Empile les toasts comme un paquet : le plus récent devant.
+    var items = Array.prototype.slice.call(document.querySelectorAll(".toast:not(.out)")).reverse();
+    items.forEach(function (t, i) {
+      if (t.classList.contains("in")) return;
+      t.style.transform = "translateY(" + (-i * 10) + "px) scale(" + (1 - i * 0.05) + ")";
+      t.style.opacity = i > 2 ? "0" : String(1 - i * 0.15);
+      t.style.zIndex = String(10 - i);
     });
   }
 
-  $("btn-random").addEventListener("click", random);
-  $("btn-reveal").addEventListener("click", toggleReveal);
+  // ---------- Confettis ----------
+  function confetti() {
+    if (reduceMotion) return;
+    var c = $("confetti"), ctx = c.getContext("2d");
+    var dpr = window.devicePixelRatio || 1;
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr;
+    ctx.scale(dpr, dpr);
+    var colors = ["#358ed2", "#f5d92d", "#7c5cff", "#12a37a", "#e5484d"];
+    var parts = [];
+    for (var i = 0; i < 140; i++) {
+      parts.push({
+        x: innerWidth / 2 + (Math.random() - 0.5) * 80,
+        y: innerHeight * 0.35,
+        vx: (Math.random() - 0.5) * 14,
+        vy: -Math.random() * 14 - 4,
+        r: Math.random() * Math.PI,
+        vr: (Math.random() - 0.5) * 0.3,
+        w: 6 + Math.random() * 6,
+        h: 3 + Math.random() * 4,
+        c: colors[i % colors.length]
+      });
+    }
+    var start = performance.now();
+    (function frame(t) {
+      var life = (t - start) / 2600;
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      parts.forEach(function (p) {
+        p.vy += 0.35; p.vx *= 0.99;
+        p.x += p.vx; p.y += p.vy; p.r += p.vr;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - life);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.r);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+      if (life < 1) requestAnimationFrame(frame);
+      else ctx.setTransform(1, 0, 0, 1, 0, 0), ctx.clearRect(0, 0, c.width, c.height);
+    })(start);
+  }
+
+  // ---------- Mode défi ----------
+  var chStack = $("ch-stack");
+
+  function showBest() {
+    $("ch-best").textContent = state.best
+      ? "Ton record : " + state.best.score + " / " + state.best.total + " · série de " + state.best.streak + " 🔥"
+      : "";
+  }
+
+  function startChallenge() {
+    var list = shuffle(FICHES.slice()).slice(0, state.size);
+    state.ch = { list: list, i: 0, score: 0, streak: 0, bestStreak: 0, perfect: 0, judged: 0 };
+    $("ch-intro").hidden = true;
+    $("ch-result").hidden = true;
+    $("ch-run").hidden = false;
+    chStack.innerHTML = "";
+    showChallengeCard();
+    buzz(10);
+  }
+
+  function showChallengeCard() {
+    var ch = state.ch;
+    var f = ch.list[ch.i];
+    ch.judged = 0;
+    ch.cardGood = 0;
+    var card = buildCard(f, true);
+    card.querySelectorAll(".qa").forEach(function (qa) {
+      qa.querySelector(".yes").addEventListener("click", function () { judge(qa, true); });
+      qa.querySelector(".no").addEventListener("click", function () { judge(qa, false); });
+    });
+    swapCard(chStack, card, "next");
+    $("ch-next").disabled = true;
+    $("ch-next").firstChild.textContent = ch.i === ch.list.length - 1 ? "Voir le résultat " : "Fiche suivante ";
+    updateHud();
+  }
+
+  function judge(qa, good) {
+    var ch = state.ch;
+    if (qa.classList.contains("judged")) return;
+    qa.classList.add("judged", good ? "judged-yes" : "judged-no");
+    ch.judged++;
+    if (good) {
+      ch.score++; ch.cardGood++; ch.streak++;
+      ch.bestStreak = Math.max(ch.bestStreak, ch.streak);
+      buzz(12);
+      var pt = document.createElement("span");
+      pt.className = "float-pt";
+      pt.textContent = "+1";
+      pt.style.top = qa.offsetTop + "px";
+      qa.parentNode.appendChild(pt);
+      setTimeout(function () { pt.remove(); }, 900);
+      if (ch.streak > 0 && ch.streak % 5 === 0) toast("Série de " + ch.streak + " ! 🔥");
+    } else {
+      ch.streak = 0;
+      buzz([20, 30, 20]);
+    }
+    updateHud(true);
+    if (ch.judged === 3) {
+      if (ch.cardGood === 3) {
+        ch.perfect++;
+        state.known[ch.list[ch.i].numero] = true;
+        save(KEY_KNOWN, state.known);
+        updateRing();
+      }
+      $("ch-next").disabled = false;
+      $("ch-next").focus({ preventScroll: true });
+    } else {
+      // Ouvre la question suivante pour garder le rythme.
+      var nextQa = qa.nextElementSibling;
+      if (nextQa && nextQa.classList.contains("qa")) {
+        nextQa.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
+      }
+    }
+  }
+
+  function updateHud(bump) {
+    var ch = state.ch;
+    $("ch-step").textContent = "Fiche " + (ch.i + 1) + " / " + ch.list.length;
+    $("ch-bar").style.width = (100 * (ch.i + ch.judged / 3) / ch.list.length) + "%";
+    var s = $("ch-score"), st = $("ch-streak");
+    s.textContent = ch.score + (ch.score > 1 ? " pts" : " pt");
+    st.textContent = "🔥 " + ch.streak;
+    st.classList.toggle("hot", ch.streak >= 3);
+    if (bump) {
+      [s, st].forEach(function (el) {
+        el.classList.remove("bump");
+        void el.offsetWidth;
+        el.classList.add("bump");
+      });
+    }
+  }
+
+  function nextChallenge() {
+    var ch = state.ch;
+    if (ch.i < ch.list.length - 1) {
+      ch.i++;
+      showChallengeCard();
+      window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    } else {
+      finishChallenge();
+    }
+  }
+
+  function finishChallenge() {
+    var ch = state.ch;
+    var total = ch.list.length * 3;
+    var pct = Math.round(100 * ch.score / total);
+    $("ch-run").hidden = true;
+    $("ch-result").hidden = false;
+    $("res-total").textContent = total;
+    $("res-pct").textContent = pct + " %";
+    $("res-streak").textContent = ch.bestStreak;
+    $("res-perfect").textContent = ch.perfect;
+    var rank = pct >= 90 ? ["🏆", "Champion !", "Tu es prêt pour l'examen. L'inspecteur n'a qu'à bien se tenir."]
+      : pct >= 70 ? ["🚀", "Très bien !", "Encore quelques fiches à revoir et ce sera parfait."]
+      : pct >= 50 ? ["👍", "Pas mal !", "Tu es sur la bonne route, continue à réviser."]
+      : ["💪", "Courage !", "Relis les fiches en mode révision, puis retente le défi."];
+    $("res-emoji").textContent = rank[0];
+    $("res-title").textContent = rank[1];
+    $("res-text").textContent = rank[2] + (ch.perfect ? " Les fiches parfaites sont marquées comme sues." : "");
+    countUp($("res-score"), ch.score);
+    var isRecord = !state.best || ch.score / total > state.best.score / state.best.total;
+    if (isRecord) {
+      state.best = { score: ch.score, total: total, streak: ch.bestStreak };
+      save(KEY_BEST, state.best);
+      if (ch.score > 0) toast("Nouveau record ! 🏅");
+    }
+    if (pct >= 70) confetti();
+    renderGrid();
+    window.scrollTo({ top: 0 });
+  }
+
+  function countUp(el, to) {
+    if (reduceMotion || to === 0) { el.textContent = to; return; }
+    var start = performance.now(), dur = 900;
+    (function step(t) {
+      var p = Math.min(1, (t - start) / dur);
+      el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(step);
+    })(start);
+  }
+
+  function backToIntro() {
+    state.ch = null;
+    $("ch-run").hidden = true;
+    $("ch-result").hidden = true;
+    $("ch-intro").hidden = false;
+    showBest();
+    sizeSeg.place();
+  }
+
+  // ---------- Onglets ----------
+  var tabs = segmented($("tabs"), function (v) { setTab(v, true); });
+  function setTab(v, fromControl) {
+    if (!fromControl) tabs.select(v, true);
+    $("view-revise").hidden = v !== "revise";
+    $("view-challenge").hidden = v !== "challenge";
+    if (v === "revise") filterSeg.place();
+    else if (!state.ch) { showBest(); sizeSeg.place(); }
+  }
+
+  var filterSeg = segmented($("filter"), function (v) { state.filter = v; next(); });
+  var sizeSeg = segmented($("ch-size"), function (v) { state.size = parseInt(v, 10); });
+
+  // ---------- Événements ----------
+  $("only-todo").addEventListener("change", function (e) {
+    state.onlyTodo = e.target.checked;
+    buzz(5);
+    if (state.onlyTodo && state.current && state.known[state.current.numero]) next();
+  });
+  $("btn-next").addEventListener("click", next);
   $("btn-known").addEventListener("click", toggleKnown);
-  $("btn-prev").addEventListener("click", function () { step(-1); });
-  $("btn-next").addEventListener("click", function () { step(1); });
-  $("btn-goto").addEventListener("click", function () {
-    var n = parseInt($("goto").value, 10);
-    if (n === 0) n = 100;
-    if (n >= 1 && n <= 100) byNumber(n);
+  $("btn-list").addEventListener("click", openSheet);
+  $("ring").addEventListener("click", openSheet);
+  $("search").addEventListener("input", renderGrid);
+  $("btn-reset").addEventListener("click", function () {
+    if (!confirm("Remettre toutes les fiches à revoir ?")) return;
+    state.known = {};
+    save(KEY_KNOWN, state.known);
+    refreshKnown();
+    toast("Toutes les fiches sont à revoir.");
   });
-  $("goto").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") $("btn-goto").click();
+  $("ch-start").addEventListener("click", startChallenge);
+  $("ch-next").addEventListener("click", nextChallenge);
+  $("ch-quit").addEventListener("click", function () {
+    if (state.ch && state.ch.i > 0 && !confirm("Arrêter le défi en cours ?")) return;
+    backToIntro();
   });
+  $("res-again").addEventListener("click", startChallenge);
+  $("res-back").addEventListener("click", backToIntro);
 
   document.addEventListener("keydown", function (e) {
     var tag = (e.target.tagName || "").toLowerCase();
-    if (tag === "input" || tag === "select" || tag === "textarea" || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key === " " && tag !== "button" && tag !== "summary") { e.preventDefault(); random(); }
-    else if (e.key === "r" || e.key === "R") toggleReveal();
-    else if (e.key === "ArrowLeft") step(-1);
-    else if (e.key === "ArrowRight") step(1);
+    if (e.key === "Escape" && sheet.classList.contains("open")) { closeSheet(); return; }
+    if (tag === "input" || tag === "textarea" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (sheet.classList.contains("open")) return;
+    var revising = !$("view-revise").hidden;
+    if (revising) {
+      if (e.key === " " && tag !== "button") { e.preventDefault(); next(); }
+      else if (e.key === "ArrowRight") next();
+      else if (e.key === "ArrowLeft") prev();
+      else if (e.key === "k" || e.key === "K") toggleKnown();
+    }
+    if (e.key === "r" || e.key === "R") {
+      var root = revising ? stack : chStack;
+      var closed = root.querySelector(".card.fiche:not(.leave) .qa:not(.open) .reveal-btn");
+      if (closed) closed.click();
+    }
+    if (e.key === "l" || e.key === "L") openSheet();
   });
 
-  renderProgress();
-  renderList();
-
+  // ---------- Démarrage ----------
+  updateRing();
+  renderGrid();
   var fromHash = parseInt(location.hash.slice(1), 10);
-  if (fromHash >= 1 && fromHash <= 100) byNumber(fromHash);
+  if (byNum[fromHash]) show(byNum[fromHash], "next");
+  else next();
+  // Les polices système peuvent changer la largeur des boutons après le premier rendu.
+  window.addEventListener("load", function () { tabs.place(); filterSeg.place(); });
 })();
