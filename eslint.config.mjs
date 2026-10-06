@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Site statique de révision du permis B (JS navigateur, hors Next.js).
+    "permis-b/**",
   ]),
 ]);
 

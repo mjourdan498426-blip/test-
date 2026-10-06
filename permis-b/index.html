@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f6f4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0e0e10" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Révision permis B · Auto-école St Marc</title>
+  <link rel="icon" href="logo-st-marc.png">
+  <link rel="apple-touch-icon" href="logo-st-marc.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="band">
+      <div class="band-main">
+        <img class="logo" src="logo-st-marc.png" alt="Auto-école St Marc" width="640" height="349">
+        <div class="band-text">
+          <p class="band-kicker">Auto-école</p>
+          <p class="band-name">St Marc</p>
+          <p class="band-offer">Permis B · AAC · Moto · BSR</p>
+          <p class="band-stage">Stages permis à points</p>
+        </div>
+      </div>
+      <div class="band-contacts">
+        <a class="contact" href="tel:+33475041073">
+          <span class="contact-ico" aria-hidden="true">📞</span>
+          <span class="contact-txt"><b>Pierrelatte</b><span>Place de l'Église</span><span class="tel">04 75 04 10 73</span></span>
+        </a>
+        <a class="contact" href="tel:+33490403381">
+          <span class="contact-ico" aria-hidden="true">📞</span>
+          <span class="contact-txt"><b>Lapalud</b><span>4 avenue de la Gare</span><span class="tel">04 90 40 33 81</span></span>
+        </a>
+      </div>
+    </header>
+
+    <div class="title-row">
+      <div>
+        <h1>Révision permis B</h1>
+        <p>Les 100 fiches de vérification</p>
+      </div>
+      <button class="ring" id="ring" type="button" aria-label="Voir les fiches">
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <circle class="ring-bg" cx="18" cy="18" r="15.5"></circle>
+          <circle class="ring-fg" id="ring-fg" cx="18" cy="18" r="15.5"></circle>
+        </svg>
+        <span id="ring-num">0</span>
+      </button>
+    </div>
+
+    <nav class="segmented tabs" id="tabs" role="tablist" aria-label="Mode">
+      <span class="seg-pill" aria-hidden="true"></span>
+      <button role="tab" type="button" data-value="revise" aria-selected="true">Réviser</button>
+      <button role="tab" type="button" data-value="challenge" aria-selected="false">Défi 🎯</button>
+    </nav>
+
+    <!-- Mode révision -->
+    <main id="view-revise" class="view">
+      <div class="filters">
+        <div class="segmented small" id="filter" role="radiogroup" aria-label="Type de vérification">
+          <span class="seg-pill" aria-hidden="true"></span>
+          <button type="button" role="radio" data-value="all" aria-checked="true">Toutes</button>
+          <button type="button" role="radio" data-value="VI" aria-checked="false">Intérieur</button>
+          <button type="button" role="radio" data-value="VE" aria-checked="false">Extérieur</button>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="only-todo">
+          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+          À revoir
+        </label>
+      </div>
+
+      <div class="stack" id="stack">
+        <div class="card ghost g2" aria-hidden="true"></div>
+        <div class="card ghost g1" aria-hidden="true"></div>
+        <div class="empty" id="empty">
+          <div class="empty-emoji">🚗</div>
+          <p>Choisis ta fiche : au hasard ou par son numéro.</p>
+          <p class="hint">Astuce : fais glisser la carte vers la gauche pour une autre fiche au hasard.</p>
+        </div>
+      </div>
+
+      <div class="bar">
+        <button type="button" class="icon-btn known-btn" id="btn-known" aria-label="Je connais cette fiche" aria-pressed="false">
+          <span class="check" aria-hidden="true">✓</span>
+        </button>
+        <button type="button" class="btn ghost-btn" id="btn-pick"><span aria-hidden="true">🔢</span> Numéro</button>
+        <button type="button" class="btn primary" id="btn-next"><span class="dice" aria-hidden="true">🎲</span> Au hasard</button>
+      </div>
+    </main>
+
+    <!-- Mode défi -->
+    <main id="view-challenge" class="view" hidden>
+      <section class="intro" id="ch-intro">
+        <div class="intro-emoji" aria-hidden="true">🏁</div>
+        <h2>Le défi</h2>
+        <p>Une série de fiches tirées au hasard. Pour chaque question, réfléchis, regarde la réponse et dis honnêtement si tu savais. Un point par bonne réponse, et ta série 🔥 grimpe tant que tu enchaînes.</p>
+        <div class="segmented small" id="ch-size" role="radiogroup" aria-label="Nombre de fiches">
+          <span class="seg-pill" aria-hidden="true"></span>
+          <button type="button" role="radio" data-value="5" aria-checked="false">5 fiches</button>
+          <button type="button" role="radio" data-value="10" aria-checked="true">10 fiches</button>
+          <button type="button" role="radio" data-value="20" aria-checked="false">20 fiches</button>
+        </div>
+        <button type="button" class="btn primary big" id="ch-start">C'est parti</button>
+        <p class="best" id="ch-best"></p>
+      </section>
+
+      <section class="ch-run" id="ch-run" hidden>
+        <div class="hud">
+          <div class="hud-progress"><span id="ch-bar"></span></div>
+          <div class="hud-row">
+            <span id="ch-step">Fiche 1 / 10</span>
+            <span class="hud-right">
+              <span class="pill streak" id="ch-streak">🔥 0</span>
+              <span class="pill score" id="ch-score">0 pt</span>
+            </span>
+          </div>
+        </div>
+        <div class="stack solo" id="ch-stack"></div>
+        <div class="bar">
+          <button type="button" class="btn ghost-btn" id="ch-quit">Arrêter</button>
+          <button type="button" class="btn primary" id="ch-next" disabled>Fiche suivante <span aria-hidden="true">→</span></button>
+        </div>
+      </section>
+
+      <section class="result" id="ch-result" hidden>
+        <div class="result-emoji" id="res-emoji">🏆</div>
+        <h2 id="res-title">Bravo !</h2>
+        <p class="res-score"><span id="res-score">0</span><small> / <span id="res-total">0</span></small></p>
+        <p id="res-text"></p>
+        <div class="res-stats">
+          <div><strong id="res-pct">0 %</strong><span>de réussite</span></div>
+          <div><strong id="res-streak">0</strong><span>meilleure série</span></div>
+          <div><strong id="res-perfect">0</strong><span>fiches parfaites</span></div>
+        </div>
+        <button type="button" class="btn primary big" id="res-again">Rejouer</button>
+        <button type="button" class="btn ghost-btn big" id="res-back">Retour</button>
+      </section>
+    </main>
+
+    <footer class="foot">
+      Source : banque officielle des vérifications DSR/BRPCE, 1<sup>er</sup> janvier 2018.
+    </footer>
+  </div>
+
+  <!-- Tiroir : toutes les fiches -->
+  <div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
+  <section class="sheet" id="sheet" aria-label="Toutes les fiches" aria-hidden="true">
+    <div class="sheet-handle"><span></span></div>
+    <div class="sheet-head">
+      <h2>Toutes les fiches</h2>
+      <input type="search" id="search" placeholder="Rechercher : pneu, feux, alerte…" autocomplete="off">
+      <p class="legend"><span class="dot vi"></span>Intérieur <span class="dot ve"></span>Extérieur <span class="dot ok"></span>Sue</p>
+    </div>
+    <div class="grid" id="grid"></div>
+    <p class="no-result" id="no-result" hidden>Aucune fiche ne correspond.</p>
+    <button type="button" class="reset" id="btn-reset">Remettre toutes les fiches à revoir</button>
+  </section>
+
+  <!-- Tiroir : choisir un numéro -->
+  <section class="sheet" id="picker" aria-label="Choisir une fiche par son numéro" aria-hidden="true">
+    <div class="sheet-handle"><span></span></div>
+    <div class="picker">
+      <h2>Quelle fiche ?</h2>
+      <div class="odo big" id="pick-odo" aria-hidden="true"></div>
+      <p class="pick-info" id="pick-info">Tape un numéro de 1 à 99, ou 00 pour la fiche 100.</p>
+      <div class="keypad" id="keypad">
+        <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+        <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+        <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+        <button type="button" data-k="del" aria-label="Effacer">⌫</button><button type="button" data-k="0">0</button><button type="button" data-k="ok" class="ok" aria-label="Valider">OK</button>
+      </div>
+      <button type="button" class="btn primary big" id="pick-go" disabled>Voir la fiche</button>
+      <button type="button" class="reset" id="pick-grid">Voir la grille des 100 fiches</button>
+    </div>
+  </section>
+
+  <ol class="toasts" id="toasts" aria-live="polite"></ol>
+  <canvas id="confetti" aria-hidden="true"></canvas>
+
+  <script src="fiches.js"></script>
+  <script src="complements.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
