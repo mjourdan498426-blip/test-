@@ -23,3 +23,10 @@ pensé d'abord pour le téléphone.
 Données : `fiches.js`, généré depuis l'extraction du PDF officiel DSR/BRPCE du
 1er janvier 2018. Pour 55 vérifications, le document officiel ne donne pas de réponse
 écrite ; la fiche l'indique.
+
+## Réponses complémentaires
+
+Le document officiel ne donne pas de réponse pour 55 vérifications (gestes à
+faire sur le véhicule). `complements.js` contient une réponse rédigée par
+l'auto-école pour chacune, affichée avec la mention « non officielle », et un
+pictogramme tiré de Material Design Icons (Pictogrammers, licence libre).

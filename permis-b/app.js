@@ -132,12 +132,23 @@
   }
 
   // ---------- Carte d'une fiche ----------
-  function qaBlock(kind, icon, title, q, a, judge) {
+  function answerHtml(a, extra) {
+    if (a) return '<div class="answer-inner">' + esc(a) + "</div>";
+    if (!extra) return '<div class="answer-inner missing">' + esc(MISSING) + "</div>";
+    // Réponse rédigée par l'auto-école + pictogramme, quand le document officiel n'en donne pas.
+    var path = (window.ICONES || {})[extra.icone];
+    return '<div class="answer-inner complement">' +
+      (path ? '<span class="visual" style="--c:' + extra.couleur + '" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="' + path + '"/></svg></span>' : "") +
+      '<span class="complement-txt">' + esc(extra.reponse) +
+      '<small>Réponse de l\'auto-école · non officielle</small></span></div>';
+  }
+
+  function qaBlock(kind, icon, title, q, a, judge, extra) {
     return '<section class="qa" data-kind="' + kind + '">' +
       '<p class="qa-label"><span aria-hidden="true">' + icon + "</span>" + title + "</p>" +
       '<p class="qa-q">' + esc(q) + "</p>" +
       '<button type="button" class="reveal-btn">Voir la réponse</button>' +
-      '<div class="answer"><div><div class="answer-inner' + (a ? "" : " missing") + '">' + esc(a || MISSING) + "</div></div></div>" +
+      '<div class="answer"><div>' + answerHtml(a, extra) + "</div></div>" +
       (judge ? '<div class="judge"><button type="button" class="no">✗ À revoir</button><button type="button" class="yes">✓ Je savais</button></div>' : "") +
       "</section>";
   }
@@ -152,7 +163,7 @@
       '<div class="fiche-head"><span class="fiche-odo"></span>' +
       '<span class="chips">' + (state.known[f.numero] && !judge ? '<span class="chip ok">✓ Sue</span>' : "") +
       '<span class="chip ' + t + '">' + (t === "VI" ? "🚗 " : "🔧 ") + TYPE_LABEL[t] + "</span></span></div>" +
-      qaBlock("verif", t === "VI" ? "🚗" : "🔧", "Vérification " + TYPE_LABEL[t].toLowerCase(), f.verification.question, f.verification.reponse, judge) +
+      qaBlock("verif", t === "VI" ? "🚗" : "🔧", "Vérification " + TYPE_LABEL[t].toLowerCase(), f.verification.question, f.verification.reponse, judge, (window.COMPLEMENTS || {})[f.numero]) +
       qaBlock("qser", "🛣️", "Sécurité routière", f.qser.question, f.qser.reponse, judge) +
       qaBlock("ps", "⛑️", "Premiers secours", f.premiers_secours.question, f.premiers_secours.reponse, judge);
 

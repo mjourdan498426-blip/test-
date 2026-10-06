@@ -425,6 +425,23 @@ button:focus-visible, input:focus-visible, .switch input:focus-visible + .switch
   transition: opacity .4s ease, filter .4s ease, transform .5s var(--ease);
 }
 .answer-inner.missing { background: var(--warn-bg); box-shadow: inset 3px 0 0 var(--warn-line); font-style: italic; }
+.answer-inner.complement { display: flex; gap: 14px; align-items: flex-start; }
+.visual {
+  flex: none;
+  width: 64px; height: 64px;
+  border-radius: 16px;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--c) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 30%, transparent);
+}
+.visual svg { width: 40px; height: 40px; fill: var(--c); }
+.complement-txt small {
+  display: block;
+  margin-top: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  opacity: .6;
+}
 .qa.open .answer { grid-template-rows: 1fr; }
 .qa.open .answer-inner { opacity: 1; filter: none; transform: none; }
 
