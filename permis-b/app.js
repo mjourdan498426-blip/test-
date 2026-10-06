@@ -77,6 +77,60 @@
     return { select: select, place: place };
   }
 
+  // ---------- Compteur kilométrique ----------
+  // Chaque chiffre est un tambour (0-9 répété 3 fois) qu'on fait tourner vers le haut.
+  // La position de repos est toujours dans la copie du milieu (indices 10 à 19).
+  function odometer(el, value) {
+    el.classList.add("odo");
+    el.innerHTML = '<span class="odo-tag">N°</span><span class="odo-win"></span>';
+    var win = el.querySelector(".odo-win");
+    var drums = [0, 1].map(function () {
+      var d = document.createElement("span");
+      d.className = "odo-d";
+      var strip = document.createElement("span");
+      strip.className = "odo-strip";
+      var html = "";
+      for (var i = 0; i < 30; i++) html += "<span>" + (i % 10) + "</span>";
+      strip.innerHTML = html;
+      d.appendChild(strip);
+      win.appendChild(d);
+      return { strip: strip, pos: 10 };
+    });
+    function place(drum, pos, duration) {
+      drum.strip.style.transition = duration ? "transform " + duration + "ms cubic-bezier(.22, 1, .36, 1)" : "none";
+      drum.strip.style.transform = "translateY(" + (-pos * 10 / 3) + "%)";
+      drum.pos = pos;
+    }
+    function digits(n) { return label(n).split("").map(Number); }
+    function set(n, spin) {
+      digits(n).forEach(function (digit, i) {
+        var drum = drums[i];
+        var target = 10 + digit;
+        if (reduceMotion) { place(drum, target, 0); return; }
+        if (spin) {
+          // Recule d'un tour complet sans animation, puis roule vers l'avant jusqu'au chiffre.
+          place(drum, drum.pos - 10, 0);
+          void drum.strip.offsetWidth;
+          place(drum, target, 900 + i * 450);
+        } else if (target !== drum.pos) {
+          place(drum, target, 450);
+        }
+      });
+      el.setAttribute("aria-label", "Fiche " + label(n));
+    }
+    function setDigits(text) {
+      // Saisie en cours dans le pavé : affiche les chiffres tapés, cadrés à droite.
+      var t = ("--" + text).slice(-2);
+      t.split("").forEach(function (c, i) {
+        var drum = drums[i];
+        drum.strip.parentNode.classList.toggle("blank", c === "-");
+        if (c !== "-") place(drum, 10 + Number(c), reduceMotion ? 0 : 380);
+      });
+    }
+    digits(value || 100).forEach(function (d, i) { place(drums[i], 10 + d, 0); });
+    return { set: set, setDigits: setDigits };
+  }
+
   // ---------- Carte d'une fiche ----------
   function qaBlock(kind, icon, title, q, a, judge) {
     return '<section class="qa" data-kind="' + kind + '">' +
@@ -88,19 +142,22 @@
       "</section>";
   }
 
-  function buildCard(f, judge) {
+  function buildCard(f, judge, from, spin) {
     var el = document.createElement("article");
     el.className = "card fiche enter";
     el.dataset.num = f.numero;
     var t = f.verification.type;
     el.innerHTML =
       '<span class="swipe-hint prev">← Précédente</span><span class="swipe-hint next">Suivante →</span>' +
-      '<div class="fiche-head"><span class="fiche-num">Fiche<b>' + label(f.numero) + "</b></span>" +
+      '<div class="fiche-head"><span class="fiche-odo"></span>' +
       '<span class="chips">' + (state.known[f.numero] && !judge ? '<span class="chip ok">✓ Sue</span>' : "") +
       '<span class="chip ' + t + '">' + (t === "VI" ? "🚗 " : "🔧 ") + TYPE_LABEL[t] + "</span></span></div>" +
       qaBlock("verif", t === "VI" ? "🚗" : "🔧", "Vérification " + TYPE_LABEL[t].toLowerCase(), f.verification.question, f.verification.reponse, judge) +
       qaBlock("qser", "🛣️", "Sécurité routière", f.qser.question, f.qser.reponse, judge) +
       qaBlock("ps", "⛑️", "Premiers secours", f.premiers_secours.question, f.premiers_secours.reponse, judge);
+
+    var odo = odometer(el.querySelector(".fiche-odo"), from || f.numero);
+    el.rollIn = function () { odo.set(f.numero, spin); };
 
     el.querySelectorAll(".reveal-btn").forEach(function (b) {
       b.addEventListener("click", function () {
@@ -121,7 +178,10 @@
       setTimeout(function () { old.remove(); }, reduceMotion ? 0 : 450);
     }
     container.appendChild(card);
-    nextFrame(function () { card.classList.remove("enter"); });
+    nextFrame(function () {
+      card.classList.remove("enter");
+      if (card.rollIn) card.rollIn();
+    });
   }
 
   // ---------- Mode révision ----------
@@ -135,11 +195,12 @@
     });
   }
 
-  function show(f, direction) {
+  function show(f, direction, spin) {
+    var from = state.current ? state.current.numero : 0;
     if (state.current && direction !== "prev") state.history.push(state.current.numero);
     if (state.history.length > 200) state.history.shift();
     state.current = f;
-    var card = buildCard(f, false);
+    var card = buildCard(f, false, from, spin);
     attachSwipe(card);
     swapCard(stack, card, direction);
     stack.classList.remove("is-empty");
@@ -159,7 +220,9 @@
       list = list.filter(function (f) { return f.numero !== state.current.numero; });
     }
     buzz(6);
-    show(list[Math.floor(Math.random() * list.length)], "next");
+    var dice = document.querySelector("#btn-next .dice");
+    if (dice) { dice.classList.remove("roll"); void dice.offsetWidth; dice.classList.add("roll"); }
+    show(list[Math.floor(Math.random() * list.length)], "next", true);
   }
 
   function prev() {
@@ -206,7 +269,8 @@
   function updateKnownButton() {
     var on = !!(state.current && state.known[state.current.numero]);
     $("btn-known").classList.toggle("on", on);
-    $("known-label").textContent = on ? "Sue" : "Je sais";
+    $("btn-known").setAttribute("aria-pressed", String(on));
+    $("btn-known").setAttribute("aria-label", on ? "Fiche sue (toucher pour la remettre à revoir)" : "Je connais cette fiche");
   }
 
   function updateRing() {
@@ -293,46 +357,103 @@
     document.querySelectorAll(".tile.current").forEach(function (t) { t.classList.remove("current"); });
   }
 
-  function openSheet() {
-    renderGrid();
+  var picker = $("picker");
+  var openSheetEl = null;
+
+  function openPanel(el) {
+    if (openSheetEl && openSheetEl !== el) closePanel(true);
+    openSheetEl = el;
     backdrop.hidden = false;
-    sheet.setAttribute("aria-hidden", "false");
+    el.setAttribute("aria-hidden", "false");
     nextFrame(function () {
       backdrop.classList.add("show");
-      sheet.classList.add("open");
+      el.classList.add("open");
     });
     buzz(5);
   }
-  function closeSheet() {
-    sheet.style.transform = "";
+  function closePanel(keepBackdrop) {
+    var el = openSheetEl;
+    if (!el) return;
+    openSheetEl = null;
+    el.style.transform = "";
+    el.classList.remove("open");
+    el.setAttribute("aria-hidden", "true");
+    if (keepBackdrop === true) return;
     backdrop.classList.remove("show");
-    sheet.classList.remove("open");
-    sheet.setAttribute("aria-hidden", "true");
-    setTimeout(function () { if (!sheet.classList.contains("open")) backdrop.hidden = true; }, 450);
+    setTimeout(function () { if (!openSheetEl) backdrop.hidden = true; }, 450);
   }
+  function openSheet() { renderGrid(); openPanel(sheet); }
+  function closeSheet() { closePanel(); }
 
-  (function sheetDrag() {
-    var handle = $("sheet-handle"), startY = 0, dy = 0, dragging = false;
+  [sheet, picker].forEach(function (panel) {
+    var handle = panel.querySelector(".sheet-handle"), startY = 0, dy = 0, dragging = false;
     handle.addEventListener("pointerdown", function (e) {
       dragging = true; startY = e.clientY; dy = 0;
-      sheet.classList.add("dragging");
+      panel.classList.add("dragging");
       handle.setPointerCapture(e.pointerId);
     });
     handle.addEventListener("pointermove", function (e) {
       if (!dragging) return;
       dy = Math.max(0, e.clientY - startY);
-      sheet.style.transform = "translateY(" + dy + "px)";
+      panel.style.transform = "translateY(" + dy + "px)";
     });
     function end() {
       if (!dragging) return;
       dragging = false;
-      sheet.classList.remove("dragging");
-      if (dy > 100) closeSheet(); else sheet.style.transform = "";
+      panel.classList.remove("dragging");
+      if (dy > 100) closePanel(); else panel.style.transform = "";
     }
     handle.addEventListener("pointerup", end);
     handle.addEventListener("pointercancel", end);
-    backdrop.addEventListener("click", closeSheet);
-  })();
+  });
+  backdrop.addEventListener("click", function () { closePanel(); });
+
+  // ---------- Choisir une fiche par son numéro ----------
+  var pickOdo = odometer($("pick-odo"), 100);
+  var typed = "";
+
+  function pickedNumber() {
+    if (!typed) return null;
+    var n = parseInt(typed, 10);
+    if (n === 0) return typed.length === 2 ? 100 : null;
+    return n >= 1 && n <= 99 ? n : null;
+  }
+  function renderPick() {
+    pickOdo.setDigits(typed);
+    var n = pickedNumber();
+    var go = $("pick-go");
+    go.disabled = !n;
+    go.textContent = n ? "Voir la fiche " + label(n) : "Voir la fiche";
+    $("pick-info").textContent = n
+      ? byNum[n].verification.question
+      : "Tape un numéro de 1 à 99, ou 00 pour la fiche 100.";
+    $("pick-info").classList.toggle("has-q", !!n);
+  }
+  function openPicker() {
+    typed = "";
+    renderPick();
+    openPanel(picker);
+  }
+  function pressKey(k) {
+    if (k === "del") typed = typed.slice(0, -1);
+    else if (k === "ok") { goPicked(); return; }
+    else typed = (typed.length >= 2 ? "" : typed) + k;
+    buzz(4);
+    renderPick();
+  }
+  function goPicked() {
+    var n = pickedNumber();
+    if (!n) return;
+    closePanel();
+    setTab("revise");
+    show(byNum[n], "next", true);
+  }
+  $("keypad").addEventListener("click", function (e) {
+    var b = e.target.closest("button");
+    if (b) pressKey(b.dataset.k);
+  });
+  $("pick-go").addEventListener("click", goPicked);
+  $("pick-grid").addEventListener("click", function () { renderGrid(); openPanel(sheet); });
 
   // ---------- Toasts ----------
   function toast(msg, actionLabel, action) {
@@ -437,7 +558,8 @@
     var f = ch.list[ch.i];
     ch.judged = 0;
     ch.cardGood = 0;
-    var card = buildCard(f, true);
+    var from = ch.i > 0 ? ch.list[ch.i - 1].numero : 0;
+    var card = buildCard(f, true, from, true);
     card.querySelectorAll(".qa").forEach(function (qa) {
       qa.querySelector(".yes").addEventListener("click", function () { judge(qa, true); });
       qa.querySelector(".no").addEventListener("click", function () { judge(qa, false); });
@@ -584,7 +706,7 @@
   });
   $("btn-next").addEventListener("click", next);
   $("btn-known").addEventListener("click", toggleKnown);
-  $("btn-list").addEventListener("click", openSheet);
+  $("btn-pick").addEventListener("click", openPicker);
   $("ring").addEventListener("click", openSheet);
   $("search").addEventListener("input", renderGrid);
   $("btn-reset").addEventListener("click", function () {
@@ -605,9 +727,16 @@
 
   document.addEventListener("keydown", function (e) {
     var tag = (e.target.tagName || "").toLowerCase();
-    if (e.key === "Escape" && sheet.classList.contains("open")) { closeSheet(); return; }
+    if (e.key === "Escape" && openSheetEl) { closePanel(); return; }
     if (tag === "input" || tag === "textarea" || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (sheet.classList.contains("open")) return;
+    if (openSheetEl === picker) {
+      if (/^[0-9]$/.test(e.key)) pressKey(e.key);
+      else if (e.key === "Backspace") pressKey("del");
+      else if (e.key === "Enter") { e.preventDefault(); goPicked(); }
+      return;
+    }
+    if (openSheetEl) return;
+    if (e.key === "n" || e.key === "N" || e.key === "#") { openPicker(); return; }
     var revising = !$("view-revise").hidden;
     if (revising) {
       if (e.key === " " && tag !== "button") { e.preventDefault(); next(); }

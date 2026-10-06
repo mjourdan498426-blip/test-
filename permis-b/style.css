@@ -88,24 +88,90 @@ button:focus-visible, input:focus-visible, .switch input:focus-visible + .switch
   outline-offset: 2px;
 }
 
-/* ---------- En-tête ---------- */
-.top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 0 14px;
+/* ---------- Bandeau de l'auto-école ---------- */
+.band {
+  position: relative;
+  margin: -12px -16px 18px;
+  padding: 16px 16px 14px;
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .55), transparent 55%),
+    var(--yellow);
+  color: #10324f;
+  border-radius: 0 0 26px 26px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .06), 0 10px 30px -12px rgba(180, 150, 0, .45);
+  overflow: hidden;
 }
+.band::after {
+  /* Liseré façon marquage routier */
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: repeating-linear-gradient(90deg, var(--blue) 0 22px, transparent 22px 34px);
+  opacity: .9;
+}
+.band-main { display: flex; align-items: center; gap: 14px; }
 .logo {
-  height: 62px;
+  height: 70px;
   width: auto;
   flex: none;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .12));
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, .18));
   transition: transform .5s var(--spring);
 }
 .logo:hover { transform: rotate(-3deg) scale(1.04); }
-.top-text { flex: 1; min-width: 0; }
-.top h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.02em; }
-.top p { margin: 0; font-size: 13px; color: var(--text-2); }
+.band-text { min-width: 0; }
+.band-text p { margin: 0; }
+.band-kicker { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: #1f6fb0; }
+.band-name { font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -.03em; color: #0f4c81; }
+.band-offer { font-size: 13px; font-weight: 600; margin-top: 4px !important; color: #2d4a63; }
+
+.band-contacts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+  padding-bottom: 6px;
+}
+.contact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .72);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+  transition: transform .16s var(--ease-out), background .2s ease;
+}
+.contact:hover { background: #fff; }
+.contact:active { transform: scale(.97); }
+.contact-ico {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--blue);
+  font-size: 14px;
+}
+.contact-txt { display: grid; min-width: 0; line-height: 1.25; }
+.contact-txt b { font-size: 14px; color: #0f4c81; }
+.contact-txt span { font-size: 12px; color: #4a5d6e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contact-txt .tel { font-size: 13px; font-weight: 700; color: #10324f; font-variant-numeric: tabular-nums; }
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.title-row > div { flex: 1; min-width: 0; }
+.title-row h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+.title-row p { margin: 0; font-size: 13px; color: var(--text-2); }
 
 .ring {
   position: relative;
@@ -284,8 +350,6 @@ button:focus-visible, input:focus-visible, .switch input:focus-visible + .switch
   gap: 8px;
   margin-bottom: 4px;
 }
-.fiche-num { font-size: 13px; font-weight: 600; color: var(--text-3); letter-spacing: .02em; text-transform: uppercase; }
-.fiche-num b { font-size: 26px; color: var(--text); letter-spacing: -.03em; margin-left: 4px; vertical-align: -2px; }
 .chips { display: flex; gap: 6px; align-items: center; }
 .chip {
   display: inline-flex;
@@ -414,7 +478,7 @@ button:focus-visible, input:focus-visible, .switch input:focus-visible + .switch
 }
 .btn.primary:disabled { opacity: .35; cursor: default; transform: none; }
 .btn.big { width: 100%; padding: 15px; font-size: 17px; }
-.ghost-btn .check {
+.ghost-btn .check, .known-btn .check {
   display: inline-grid;
   place-items: center;
   width: 20px;
@@ -425,7 +489,7 @@ button:focus-visible, input:focus-visible, .switch input:focus-visible + .switch
   color: transparent;
   transition: background .25s ease, color .25s ease, border-color .25s ease, transform .4s var(--spring);
 }
-.ghost-btn.on .check { background: var(--good); border-color: var(--good); color: #fff; transform: scale(1.1); }
+.ghost-btn.on .check, .known-btn.on .check { background: var(--good); border-color: var(--good); color: #fff; transform: scale(1.1); }
 
 .bar {
   position: sticky;
@@ -441,7 +505,7 @@ button:focus-visible, input:focus-visible, .switch input:focus-visible + .switch
   -webkit-backdrop-filter: blur(14px) saturate(1.6);
 }
 .bar .btn { flex: 1; white-space: nowrap; }
-.bar .btn.primary { flex: 1.2; }
+.bar .btn.primary { flex: 1.25; }
 .icon-btn {
   flex: none;
   width: 50px;
@@ -700,7 +764,110 @@ button:focus-visible, input:focus-visible, .switch input:focus-visible + .switch
 }
 
 @media (min-width: 640px) {
-  .app { padding-top: 28px; }
-  .logo { height: 76px; }
-  .top h1 { font-size: 22px; }
+  .band { margin: 0 0 20px; border-radius: 26px; }
+  .logo { height: 86px; }
+  .band-name { font-size: 36px; }
+}
+
+/* ---------- Compteur kilométrique ---------- */
+.odo {
+  --h: 1.25em;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 32px;
+}
+.odo-tag {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--text-3);
+}
+.odo-win {
+  position: relative;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: linear-gradient(#cfcfcf, #8d8d8d);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .25), inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+.odo-d {
+  position: relative;
+  width: .82em;
+  height: var(--h);
+  overflow: hidden;
+  border-radius: 5px;
+  background: linear-gradient(#050505, #1f1f1f 50%, #050505);
+}
+.odo-d:last-child { background: linear-gradient(#050505, #1f1f1f 50%, #050505); }
+.odo-d::after {
+  /* Ombre de tambour : les chiffres « tournent » derrière la vitre */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(0, 0, 0, .75), transparent 32%, transparent 68%, rgba(0, 0, 0, .75));
+  pointer-events: none;
+}
+.odo-strip {
+  display: block;
+  will-change: transform;
+}
+.odo-strip span {
+  display: block;
+  height: var(--h);
+  line-height: var(--h);
+  text-align: center;
+  color: #f5f5f0;
+  font-weight: 700;
+  font-family: "DIN Alternate", "Bahnschrift", "Roboto Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.odo-d.blank .odo-strip { opacity: 0; }
+.odo.big { font-size: 64px; gap: 0; justify-content: center; }
+.odo.big .odo-tag { display: none; }
+.odo.big .odo-win { padding: 6px; border-radius: 16px; gap: 4px; }
+.odo.big .odo-d { border-radius: 10px; }
+
+/* ---------- Pavé numérique ---------- */
+.picker { display: grid; gap: 12px; text-align: center; padding-bottom: 4px; overflow-y: auto; }
+.picker h2 { margin: 4px 0 2px; font-size: 20px; letter-spacing: -.02em; }
+.pick-info {
+  margin: 0;
+  min-height: 2.9em;
+  font-size: 14px;
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pick-info.has-q { color: var(--text); font-weight: 550; }
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.keypad button {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 12px 0;
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: transform .12s var(--ease-out), background .15s ease;
+}
+.keypad button:active { transform: scale(.93); background: var(--line-strong); }
+.keypad .ok { background: var(--blue); color: #fff; border-color: transparent; font-size: 18px; }
+
+/* ---------- Boutons de choix ---------- */
+.known-btn .check { width: 26px; height: 26px; font-size: 14px; }
+.known-btn.on { border-color: var(--good); }
+.dice { display: inline-block; }
+.dice.roll { animation: diceRoll .7s var(--ease); }
+@keyframes diceRoll {
+  0% { transform: rotate(0) scale(1); }
+  40% { transform: rotate(-200deg) scale(1.3); }
+  100% { transform: rotate(-360deg) scale(1); }
 }

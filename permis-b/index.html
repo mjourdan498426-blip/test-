@@ -6,16 +6,36 @@
   <meta name="theme-color" content="#f6f6f4" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0e0e10" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Révision permis B · St Marc</title>
+  <title>Révision permis B · Auto-école St Marc</title>
   <link rel="icon" href="logo-st-marc.png">
   <link rel="apple-touch-icon" href="logo-st-marc.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app">
-    <header class="top">
-      <img class="logo" src="logo-st-marc.png" alt="Auto-école St Marc" width="640" height="349">
-      <div class="top-text">
+    <header class="band">
+      <div class="band-main">
+        <img class="logo" src="logo-st-marc.png" alt="Auto-école St Marc" width="640" height="349">
+        <div class="band-text">
+          <p class="band-kicker">Auto-école</p>
+          <p class="band-name">St Marc</p>
+          <p class="band-offer">Permis B · AAC · Moto · BSR</p>
+        </div>
+      </div>
+      <div class="band-contacts">
+        <a class="contact" href="tel:+33475041073">
+          <span class="contact-ico" aria-hidden="true">📞</span>
+          <span class="contact-txt"><b>Pierrelatte</b><span>Place de l'Église</span><span class="tel">04 75 04 10 73</span></span>
+        </a>
+        <a class="contact" href="tel:+33490403381">
+          <span class="contact-ico" aria-hidden="true">📞</span>
+          <span class="contact-txt"><b>Lapalud</b><span>84840 Lapalud</span><span class="tel">04 90 40 33 81</span></span>
+        </a>
+      </div>
+    </header>
+
+    <div class="title-row">
+      <div>
         <h1>Révision permis B</h1>
         <p>Les 100 fiches de vérification</p>
       </div>
@@ -26,7 +46,7 @@
         </svg>
         <span id="ring-num">0</span>
       </button>
-    </header>
+    </div>
 
     <nav class="segmented tabs" id="tabs" role="tablist" aria-label="Mode">
       <span class="seg-pill" aria-hidden="true"></span>
@@ -55,19 +75,17 @@
         <div class="card ghost g1" aria-hidden="true"></div>
         <div class="empty" id="empty">
           <div class="empty-emoji">🚗</div>
-          <p>Tire une fiche pour commencer.</p>
-          <p class="hint">Astuce : fais glisser la carte vers la gauche pour passer à la suivante.</p>
+          <p>Choisis ta fiche : au hasard ou par son numéro.</p>
+          <p class="hint">Astuce : fais glisser la carte vers la gauche pour une autre fiche au hasard.</p>
         </div>
       </div>
 
       <div class="bar">
-        <button type="button" class="icon-btn" id="btn-list" aria-label="Toutes les fiches">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
+        <button type="button" class="icon-btn known-btn" id="btn-known" aria-label="Je connais cette fiche" aria-pressed="false">
+          <span class="check" aria-hidden="true">✓</span>
         </button>
-        <button type="button" class="btn ghost-btn" id="btn-known">
-          <span class="check" aria-hidden="true">✓</span><span id="known-label">Je sais</span>
-        </button>
-        <button type="button" class="btn primary" id="btn-next">Suivante <span aria-hidden="true">→</span></button>
+        <button type="button" class="btn ghost-btn" id="btn-pick"><span aria-hidden="true">🔢</span> Numéro</button>
+        <button type="button" class="btn primary" id="btn-next"><span class="dice" aria-hidden="true">🎲</span> Au hasard</button>
       </div>
     </main>
 
@@ -128,7 +146,7 @@
   <!-- Tiroir : toutes les fiches -->
   <div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
   <section class="sheet" id="sheet" aria-label="Toutes les fiches" aria-hidden="true">
-    <div class="sheet-handle" id="sheet-handle"><span></span></div>
+    <div class="sheet-handle"><span></span></div>
     <div class="sheet-head">
       <h2>Toutes les fiches</h2>
       <input type="search" id="search" placeholder="Rechercher : pneu, feux, alerte…" autocomplete="off">
@@ -137,6 +155,24 @@
     <div class="grid" id="grid"></div>
     <p class="no-result" id="no-result" hidden>Aucune fiche ne correspond.</p>
     <button type="button" class="reset" id="btn-reset">Remettre toutes les fiches à revoir</button>
+  </section>
+
+  <!-- Tiroir : choisir un numéro -->
+  <section class="sheet" id="picker" aria-label="Choisir une fiche par son numéro" aria-hidden="true">
+    <div class="sheet-handle"><span></span></div>
+    <div class="picker">
+      <h2>Quelle fiche ?</h2>
+      <div class="odo big" id="pick-odo" aria-hidden="true"></div>
+      <p class="pick-info" id="pick-info">Tape un numéro de 1 à 99, ou 00 pour la fiche 100.</p>
+      <div class="keypad" id="keypad">
+        <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+        <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+        <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+        <button type="button" data-k="del" aria-label="Effacer">⌫</button><button type="button" data-k="0">0</button><button type="button" data-k="ok" class="ok" aria-label="Valider">OK</button>
+      </div>
+      <button type="button" class="btn primary big" id="pick-go" disabled>Voir la fiche</button>
+      <button type="button" class="reset" id="pick-grid">Voir la grille des 100 fiches</button>
+    </div>
   </section>
 
   <ol class="toasts" id="toasts" aria-live="polite"></ol>
