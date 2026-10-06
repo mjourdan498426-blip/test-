@@ -125,6 +125,17 @@ button:focus-visible, input:focus-visible, .switch input:focus-visible + .switch
 .band-text p { margin: 0; }
 .band-kicker { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: #1f6fb0; }
 .band-name { font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -.03em; color: #0f4c81; }
+.band-stage {
+  display: inline-block;
+  margin-top: 6px !important;
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
 .band-offer { font-size: 13px; font-weight: 600; margin-top: 4px !important; color: #2d4a63; }
 
 .band-contacts {

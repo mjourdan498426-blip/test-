@@ -1,6 +1,7 @@
 # Révision permis B · Auto-école St Marc
 
-Bandeau de l'auto-école en haut (Pierrelatte et Lapalud, téléphones cliquables).
+Bandeau de l'auto-école en haut : stages permis à points, agences de Pierrelatte
+(Place de l'Église) et Lapalud (4 avenue de la Gare), téléphones cliquables.
 
 Site statique (HTML/CSS/JS, sans installation) pour réviser les 100 fiches officielles
 de vérification du permis B : vérification intérieure ou extérieure, question de
