@@ -628,12 +628,10 @@ function nextSteps(
 
   if (invalidation) {
     steps.push({
-      date: invalidation.date,
       tone: 'danger',
       text: 'Remettez votre permis au préfet dans les 10 jours suivant la réception de la lettre recommandée (lettre 48SI).',
     })
     steps.push({
-      date: invalidation.earliestNewLicence,
       tone: 'info',
       text: `Nouveau permis possible au plus tôt le ${formatDate(invalidation.earliestNewLicence)} (6 mois après), ou le ${formatDate(invalidation.earliestNewLicenceIfRepeat)} en cas de nouvelle perte totale en moins de 5 ans.`,
     })
@@ -650,7 +648,6 @@ function nextSteps(
     .find((e) => !e.future && e.alert && e.date >= addMonths(asOf, -4))
   if (recentAlert)
     steps.push({
-      date: recentAlert.date,
       tone: 'warning',
       text: "Stage de sensibilisation obligatoire : il doit être suivi dans les 4 mois après la lettre recommandée. Il remplace l'amende et rend jusqu'à 4 points.",
     })
@@ -660,13 +657,12 @@ function nextSteps(
   }
 
   if (probation.activeAtAsOf && probation.end && !events.some((e) => e.future && e.kind === 'fin-probatoire' && e.delta > 0))
-    steps.push({ date: probation.end, tone: 'info', text: `Fin du permis probatoire le ${formatDate(probation.end)}.` })
+    steps.push({ tone: 'info', text: `Fin du permis probatoire le ${formatDate(probation.end)}.` })
 
   if (snap.balance < snap.cap) {
     const next = lastStage ? addYears(lastStage, 1) : asOf
     const gain = Math.min(STAGE_POINTS, snap.cap - snap.balance)
     steps.push({
-      date: next > asOf ? next : undefined,
       tone: 'info',
       text:
         next > asOf

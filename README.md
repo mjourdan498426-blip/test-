@@ -1,5 +1,10 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Autre application du dépôt
+
+`points-permis/` contient « Mes points de permis », une application Vite indépendante
+(calcul pédagogique du solde de points du permis). Voir [points-permis/README.md](points-permis/README.md).
+
 ## Getting Started
 
 First, run the development server:
