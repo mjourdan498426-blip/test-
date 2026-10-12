@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Application Vite indépendante (voir points-permis/README.md)
+    "points-permis/**",
   ]),
 ]);
 
