@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { LEGIFRANCE_CODE_DE_LA_ROUTE } from '../data/infractions'
 import { Art } from './ui'
 
 const SOURCES = ['L223-1', 'L223-2', 'L223-5', 'L223-6', 'R223-1', 'R223-3', 'R223-8']
 
 export function Footer({ onClear }: { onClear: () => void }) {
+  const [confirming, setConfirming] = useState(false)
   return (
     <footer className="mt-8 space-y-6 border-t border-line pt-6 text-sm text-muted">
       <p className="text-base font-bold text-ink">Estimation indicative : le solde officiel est tenu par le ministère de l'Intérieur.</p>
@@ -38,9 +40,30 @@ export function Footer({ onClear }: { onClear: () => void }) {
           Tout le calcul se fait sur votre appareil. Vos saisies sont enregistrées uniquement dans ce navigateur et ne sont envoyées
           nulle part. L'application fonctionne aussi hors ligne.
         </p>
-        <button type="button" className="btn btn-danger mt-3" onClick={onClear}>
-          Tout effacer
-        </button>
+        {confirming ? (
+          <div className="mt-3 rounded-xl border p-3" style={{ borderColor: 'var(--loss)' }} role="alert">
+            <p className="font-bold text-ink">Effacer toutes vos saisies ? Cette action est définitive.</p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  onClear()
+                  setConfirming(false)
+                }}
+              >
+                Oui, tout effacer
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => setConfirming(false)}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="btn btn-danger mt-3" onClick={() => setConfirming(true)}>
+            Tout effacer
+          </button>
+        )}
       </div>
     </footer>
   )

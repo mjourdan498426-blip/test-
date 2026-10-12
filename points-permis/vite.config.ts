@@ -4,11 +4,17 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// ARTIFACT=1 : build autonome (chemins relatifs, sans service worker) pour
+// un hébergement qui n'autorise pas les service workers.
+const artifact = process.env.ARTIFACT === '1'
+
 export default defineConfig({
+  base: artifact ? './' : '/',
+  build: artifact ? { outDir: 'dist-artifact' } : undefined,
   plugins: [
     react(),
     tailwindcss(),
-    VitePWA({
+    !artifact && VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'script-defer',
       includeAssets: ['icons/icon.svg', 'icons/apple-touch-icon.png'],

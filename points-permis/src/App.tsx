@@ -130,7 +130,6 @@ export default function App() {
 
         <Footer
           onClear={() => {
-            if (!confirm('Effacer toutes vos saisies ? Cette action est définitive.')) return
             clearState()
             setState(EMPTY_STATE)
           }}
