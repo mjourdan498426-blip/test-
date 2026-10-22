@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --fond: #f4f5f7; --carte: #ffffff; --texte: #1f2937; --doux: #64748b; --bord: #cbd5e1;
+      --accent: #2563eb; --ok-fond: #e6f6ec; --ok: #14532d; --ko-fond: #fde8e8; --ko: #9b1c1c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--fond); color: var(--texte);
+           font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px; }
+    h1 { text-align: center; font-size: 26px; margin: 0 0 24px; }
+    .zones { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 600px) { .zones { grid-template-columns: 1fr; } }
+    .zone { background: var(--carte); border: 2px dashed var(--bord); border-radius: 14px;
+            padding: 28px 16px; text-align: center; transition: border-color .15s, background .15s; }
+    .zone.survol { border-color: var(--accent); background: #eff6ff; }
+    .zone h2 { margin: 0 0 6px; font-size: 20px; }
+    .zone p { margin: 0 0 16px; color: var(--doux); }
+    .bouton { display: inline-block; background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+              padding: 10px 18px; font-size: 16px; cursor: pointer; text-decoration: none; }
+    .bouton.secondaire { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
+    .glisser { display: block; margin-top: 12px; font-size: 14px; font-style: italic; color: var(--doux); }
+    input[type=file] { display: none; }
+    #resultat { margin-top: 20px; border-radius: 14px; padding: 22px; text-align: center; min-height: 80px;
+                white-space: pre-line; }
+    #resultat.ok { background: var(--ok-fond); color: var(--ok); }
+    #resultat.ko { background: var(--ko-fond); color: var(--ko); }
+    #resultat.attente { background: #fff; color: var(--texte); }
+    #resultat .titre { font-size: 20px; font-weight: 600; display: block; margin-bottom: 8px; }
+    #resultat .actions { margin-top: 16px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Certificateur de documents</h1>
+
+  <div class="zones">
+    <section class="zone" id="zoneCertif">
+      <h2>Certifier un Word</h2>
+      <p>Ajoute un QR code, crée le PDF certifié et range tout dans votre Google Drive.</p>
+      <label class="bouton">Choisir un fichier<input type="file" id="fichierCertif" accept=".docx"></label>
+      <span class="glisser">ou glissez le fichier ici</span>
+    </section>
+    <section class="zone" id="zoneVerif">
+      <h2>Vérifier un PDF</h2>
+      <p>Contrôle qu'un PDF certifié n'a pas été modifié.</p>
+      <label class="bouton">Choisir un fichier<input type="file" id="fichierVerif" accept=".pdf"></label>
+      <span class="glisser">ou glissez le fichier ici</span>
+    </section>
+  </div>
+
+  <div id="resultat" class="attente">Glissez un fichier dans l'une des deux zones, ou cliquez sur « Choisir un fichier ».</div>
+</main>
+
+<script>
+  var TAILLE_MAX = 25 * 1024 * 1024;
+  var occupe = false;
+  var resultat = document.getElementById('resultat');
+
+  function afficher(classe, titre, texte, actions) {
+    resultat.className = classe;
+    resultat.textContent = '';
+    var t = document.createElement('span');
+    t.className = 'titre';
+    t.textContent = titre;
+    resultat.appendChild(t);
+    resultat.appendChild(document.createTextNode(texte || ''));
+    if (actions && actions.length) {
+      var zone = document.createElement('div');
+      zone.className = 'actions';
+      actions.forEach(function (a) { zone.appendChild(a); });
+      resultat.appendChild(zone);
+    }
+  }
+
+  function lien(texte, href, secondaire) {
+    var a = document.createElement('a');
+    a.className = 'bouton' + (secondaire ? ' secondaire' : '');
+    a.textContent = texte;
+    a.href = href;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    return a;
+  }
+
+  function lienTelechargement(base64, nom) {
+    var octets = atob(base64);
+    var tableau = new Uint8Array(octets.length);
+    for (var i = 0; i < octets.length; i++) tableau[i] = octets.charCodeAt(i);
+    var a = lien('Télécharger le PDF certifié', URL.createObjectURL(new Blob([tableau], { type: 'application/pdf' })));
+    a.download = nom;
+    return a;
+  }
+
+  function erreur(e) {
+    occupe = false;
+    var message = (e && e.message) ? e.message : String(e);
+    afficher('ko', '❌ Impossible', message.replace(/^Exception: /, ''));
+  }
+
+  function lireFichier(fichier, suite) {
+    if (fichier.size > TAILLE_MAX) {
+      afficher('ko', '❌ Fichier trop volumineux', '« ' + fichier.name + ' » dépasse 25 Mo.');
+      return;
+    }
+    var lecteur = new FileReader();
+    lecteur.onload = function () { suite(String(lecteur.result).split(',')[1] || ''); };
+    lecteur.onerror = function () { afficher('ko', '❌ Impossible', 'Le fichier n\'a pas pu être lu.'); };
+    lecteur.readAsDataURL(fichier);
+  }
+
+  function certifier(fichier) {
+    if (occupe) return;
+    if (!/\.docx$/i.test(fichier.name)) {
+      afficher('ko', '❌ Ce n\'est pas un document Word',
+        '« ' + fichier.name + ' » n\'est pas un fichier .docx.\nPour vérifier un PDF, utilisez la zone « Vérifier un PDF ».');
+      return;
+    }
+    occupe = true;
+    afficher('attente', '⏳ Certification en cours…', '« ' + fichier.name + ' »\n(environ 10 à 30 secondes)');
+    lireFichier(fichier, function (base64) {
+      google.script.run.withFailureHandler(erreur).withSuccessHandler(function (r) {
+        occupe = false;
+        afficher('ok', '✅ Document certifié',
+          'Fichier : ' + r.fichier + '\nRéférence : ' + r.reference.slice(0, 8) +
+          '\n\nLe Word d\'origine et le PDF certifié sont rangés dans votre Google Drive (dossier « Certificateur »).',
+          [lienTelechargement(r.pdfBase64, r.fichierPdf),
+           lien('Voir le PDF dans Drive', r.lienPdf, true),
+           lien('Ouvrir le dossier Certifies', r.lienDossier, true)]);
+      }).certifier(fichier.name, base64);
+    });
+  }
+
+  function verifier(fichier) {
+    if (occupe) return;
+    if (!/\.pdf$/i.test(fichier.name)) {
+      afficher('ko', '❌ Ce n\'est pas un PDF',
+        '« ' + fichier.name + ' » n\'est pas un PDF.\nPour certifier un Word, utilisez la zone « Certifier un Word ».');
+      return;
+    }
+    occupe = true;
+    afficher('attente', '⏳ Vérification en cours…', '« ' + fichier.name + ' »');
+    lireFichier(fichier, function (base64) {
+      google.script.run.withFailureHandler(erreur).withSuccessHandler(function (r) {
+        occupe = false;
+        if (r.authentique) {
+          afficher('ok', '✅ Document authentique et non modifié',
+            'Document d\'origine : ' + r.fichier + '\nCertifié le ' + r.date + '\nRéférence : ' + String(r.reference).slice(0, 8),
+            r.lienPdf ? [lien('Voir l\'original certifié dans Drive', r.lienPdf, true)] : []);
+        } else {
+          afficher('ko', '❌ Document modifié ou inconnu',
+            '« ' + r.fichier + ' » ne correspond à aucun document certifié.\nIl a pu être modifié, même légèrement, après sa certification.');
+        }
+      }).verifier(fichier.name, base64);
+    });
+  }
+
+  function brancher(idZone, idChamp, action) {
+    var zone = document.getElementById(idZone);
+    var champ = document.getElementById(idChamp);
+    champ.addEventListener('change', function () {
+      if (champ.files[0]) action(champ.files[0]);
+      champ.value = '';
+    });
+    zone.addEventListener('dragover', function (e) { e.preventDefault(); zone.classList.add('survol'); });
+    zone.addEventListener('dragleave', function () { zone.classList.remove('survol'); });
+    zone.addEventListener('drop', function (e) {
+      e.preventDefault();
+      zone.classList.remove('survol');
+      if (e.dataTransfer.files[0]) action(e.dataTransfer.files[0]);
+    });
+  }
+
+  // Un fichier lâché à côté des zones ne doit pas quitter la page.
+  window.addEventListener('dragover', function (e) { e.preventDefault(); });
+  window.addEventListener('drop', function (e) { e.preventDefault(); });
+
+  brancher('zoneCertif', 'fichierCertif', certifier);
+  brancher('zoneVerif', 'fichierVerif', verifier);
+</script>
+</body>
+</html>
