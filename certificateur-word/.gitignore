@@ -1,6 +1,8 @@
-# Environnement Python créé par les lanceurs
+# Environnement Python créé par le lanceur
 .venv/
 __pycache__/
 # Registre personnel des certifications (données locales)
 registre.json
 registre.json.tmp
+# Journal technique du lanceur
+journal.txt

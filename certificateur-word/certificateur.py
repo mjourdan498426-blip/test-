@@ -54,6 +54,7 @@ def trouver_libreoffice():
         Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "LibreOffice/program/soffice.exe",
         Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "LibreOffice/program/soffice.exe",
         Path("/Applications/LibreOffice.app/Contents/MacOS/soffice"),
+        Path.home() / "Applications/LibreOffice.app/Contents/MacOS/soffice",
     ]
     for c in candidats:
         if c.is_file():
@@ -261,12 +262,14 @@ def lancer_interface(fichiers_au_demarrage):
     import tkinter as tk
     from tkinter import filedialog, messagebox
 
+    racine = tk.Tk()
+    # Glisser-déposer facultatif : si le module manque ou ne se charge pas
+    # sur ce Mac, la fenêtre fonctionne quand même avec les boutons.
     try:
         from tkinterdnd2 import DND_FILES, TkinterDnD
-        racine = TkinterDnD.Tk()
+        TkinterDnD.require(racine)
         glisser_ok = True
     except Exception:
-        racine = tk.Tk()
         glisser_ok = False
 
     racine.title("Certificateur de documents Word")
