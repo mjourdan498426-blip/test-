@@ -1,0 +1,6 @@
+# Environnement Python créé par les lanceurs
+.venv/
+__pycache__/
+# Registre personnel des certifications (données locales)
+registre.json
+registre.json.tmp
